@@ -1,6 +1,5 @@
 package com.zcshou.gogogo;
 
-import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
@@ -41,8 +40,6 @@ import android.widget.RadioGroup;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
@@ -91,9 +88,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 
 import com.lcz.go.BuildConfig;
 import com.lcz.go.R;
@@ -110,6 +105,7 @@ import io.noties.markwon.Markwon;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
+import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class MainActivity extends BaseActivity implements SensorEventListener {
@@ -132,12 +128,8 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
     public static String mCurrentCity = null;
     private MapView mMapView;
     private static BaiduMap mBaiduMap = null;
-<<<<<<< HEAD
     private static LatLng mMarkLatLngMap = new LatLng(22.582833991069517, 113.97846790931015); // 当前标记的地图点
     private static String mMarkName = null;
-=======
-    private static LatLng mMarkLatLngMap = new LatLng(36.547743718042415, 117.07018449827267); // 当前标记的地图点
->>>>>>> 8d333ad6bd9a7224621bf097e87ffcacb381639f
     private GeoCoder mGeoCoder;
     private SensorManager mSensorManager;
     private Sensor mSensorAccelerometer;
@@ -158,8 +150,6 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
     private FloatingActionButton mButtonStart;
     /*============================== 历史记录 相关 ==============================*/
     private SQLiteDatabase mLocationHistoryDB;
-    private GeoCoder mLocationHistoryGeoCoder;
-    private ContentValues mLocationHistoryValues;
     private SQLiteDatabase mSearchHistoryDB;
     /*============================== SearchView 相关 ==============================*/
     private SearchView searchView;
@@ -222,21 +212,7 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
 
         initUpdateVersion();
 
-        try {
-            Cursor cursor = mLocationHistoryDB.query(DataBaseHistoryLocation.TABLE_NAME, null,
-                    DataBaseHistoryLocation.DB_COLUMN_ID + " > ?", new String[]{"0"},
-                    null, null, DataBaseHistoryLocation.DB_COLUMN_TIMESTAMP + " DESC", null);
-            if (cursor.moveToFirst()) {
-                String bd09Longitude = cursor.getString(5);
-                String bd09Latitude = cursor.getString(6);
-                showLocation(bd09Longitude, bd09Latitude);
-                isFirstLoc = false;
-            }
-            cursor.close();
-        } catch (Exception ignored) {
-        }
-        // 开始定位
-        mLocClient.start();
+        checkUpdateVersion(false);
     }
 
     @Override
@@ -432,27 +408,15 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
 
     /*============================== NavigationView 相关 ==============================*/
     private void initNavigationView() {
-<<<<<<< HEAD
         /*============================== NavigationView 相关 ==============================*/
         NavigationView mNavigationView = findViewById(R.id.nav_view);
-=======
-        ActivityResultLauncher<Intent> historyLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                        String lon = result.getData().getStringExtra("bd09_lon");
-                        String lat = result.getData().getStringExtra("bd09_lat");
-                        showLocation(lon, lat);
-                    }
-                }
-        );
-        mNavigationView = findViewById(R.id.nav_view);
->>>>>>> 8d333ad6bd9a7224621bf097e87ffcacb381639f
         mNavigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
+
             if (id == R.id.nav_history) {
                 Intent intent = new Intent(MainActivity.this, HistoryActivity.class);
-                historyLauncher.launch(intent);
+
+                startActivity(intent);
             } else if (id == R.id.nav_settings) {
                 Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
                 startActivity(intent);
@@ -467,16 +431,8 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
                         GoUtils.DisplayToast(this, getResources().getString(R.string.app_error_dev));
                     }
                 }
-            } else if (id == R.id.nav_overlays) {
-                try {
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(intent);
-                } catch (Exception e) {
-                    GoUtils.DisplayToast(this, "无法跳转到悬浮窗权限设置界面");
-                }
             } else if (id == R.id.nav_update) {
-                checkUpdateVersion();
+                checkUpdateVersion(true);
             } else if (id == R.id.nav_feedback) {
                 File file = new File(getExternalFilesDir("Logs"), GoApplication.LOG_FILE_NAME);
                 ShareUtils.shareFile(this, file, item.getTitle().toString());
@@ -584,6 +540,7 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
                 if (reverseGeoCodeResult == null || reverseGeoCodeResult.error != SearchResult.ERRORNO.NO_ERROR) {
                     XLog.i("逆地理位置失败!");
                 } else {
+                    mMarkName = String.valueOf(reverseGeoCodeResult.getAddress());
                     poiLatitude.setText(String.valueOf(reverseGeoCodeResult.getLocation().latitude));
                     poiLongitude.setText(String.valueOf(reverseGeoCodeResult.getLocation().longitude));
                     poiAddress.setText(reverseGeoCodeResult.getAddress());
@@ -665,6 +622,8 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
             LocationClientOption locationOption = getLocationClientOption();
             //需将配置好的LocationClientOption对象，通过setLocOption方法传递给LocationClient对象使用
             mLocClient.setLocOption(locationOption);
+            //开始定位
+            mLocClient.start();
         } catch (Exception e) {
             XLog.e("ERROR: initMapLocation");
         }
@@ -759,6 +718,8 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
                                 double[] bdLonLat = MapUtils.wgs2bd09(dialog_lat_double, dialog_lng_double);
                                 mMarkLatLngMap = new LatLng(bdLonLat[1], bdLonLat[0]);
                             }
+                            mMarkName = "手动输入的坐标";
+
                             markMap();
 
                             MapStatusUpdate mapstatusupdate = MapStatusUpdateFactory.newLatLng(mMarkLatLngMap);
@@ -796,40 +757,30 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
         mBaiduMap.setMyLocationData(locData);
 
         MapStatus.Builder builder = new MapStatus.Builder();
-        builder.target(new LatLng(mCurrentLat, mCurrentLon)).zoom(18.0f).rotate(0);
+        builder.target(new LatLng(mCurrentLat, mCurrentLon)).zoom(18.0f);
         mBaiduMap.animateMapStatus(MapStatusUpdateFactory.newMapStatus(builder.build()));
     }
 
     // 在地图上显示位置
-    void showLocation(String bd09Longitude, String bd09Latitude) {
+    public static boolean showLocation(String name, String bd09Longitude, String bd09Latitude) {
+        boolean ret = true;
+
         try {
-            double lon = Double.parseDouble(bd09Longitude);
-            double lat = Double.parseDouble(bd09Latitude);
-            // Random offset
-            if (sharedPreferences.getBoolean("setting_random_offset", false)) {
-                String max_offset_default = getResources().getString(R.string.setting_random_offset_default);
-                double lon_max_offset = Double.parseDouble(Objects.requireNonNull(sharedPreferences.getString("setting_lon_max_offset", max_offset_default)));
-                double lat_max_offset = Double.parseDouble(Objects.requireNonNull(sharedPreferences.getString("setting_lat_max_offset", max_offset_default)));
-                double randomLonOffset = (Math.random() * 2 - 1) * lon_max_offset;  // Longitude offset (meters)
-                double randomLatOffset = (Math.random() * 2 - 1) * lat_max_offset;  // Latitude offset (meters)
-                lon += randomLonOffset / 111320;    // (meters -> longitude)
-                lat += randomLatOffset / 110574;    // (meters -> latitude)
-                String msg = String.format(Locale.US, "经度偏移: %.2f米\n纬度偏移: %.2f米", randomLonOffset, randomLatOffset);
-                GoUtils.DisplayToast(this, msg);
+            if (!bd09Longitude.isEmpty() && !bd09Latitude.isEmpty()) {
+                mMarkName = name;
+                mMarkLatLngMap = new LatLng(Double.parseDouble(bd09Latitude), Double.parseDouble(bd09Longitude));
+                MarkerOptions ooA = new MarkerOptions().position(mMarkLatLngMap).icon(mMapIndicator);
+                mBaiduMap.clear();
+                mBaiduMap.addOverlay(ooA);
+                MapStatusUpdate mapstatusupdate = MapStatusUpdateFactory.newLatLng(mMarkLatLngMap);
+                mBaiduMap.setMapStatus(mapstatusupdate);
             }
-            mMarkLatLngMap = new LatLng(lat, lon);
-            MarkerOptions ooA = new MarkerOptions().position(mMarkLatLngMap).icon(mMapIndicator);
-            mBaiduMap.clear();
-            mBaiduMap.addOverlay(ooA);
-            MapStatusUpdate mapstatusupdate = MapStatusUpdateFactory.newLatLng(mMarkLatLngMap);
-            mBaiduMap.setMapStatus(mapstatusupdate);
-            MapStatus.Builder builder = new MapStatus.Builder();
-            builder.target(mMarkLatLngMap).zoom(18).rotate(0);
-            mBaiduMap.animateMapStatus(MapStatusUpdateFactory.newMapStatus(builder.build()));
         } catch (Exception e) {
+            ret = false;
             XLog.e("ERROR: showHistoryLocation");
-            GoUtils.DisplayToast(this, getResources().getString(R.string.history_error_location));
         }
+
+        return ret;
     }
 
     private void initGoBtn() {
@@ -870,19 +821,33 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
             return;
         }
 
+        if (!Settings.canDrawOverlays(getApplicationContext())) {//悬浮窗权限判断
+            GoUtils.showEnableFloatWindowDialog(this);
+            XLog.e("无悬浮窗权限!");
+            return;
+        }
+
         if (isMockServStart) {
             if (mMarkLatLngMap == null) {
                 stopGoLocation();
-                Snackbar.make(v, "模拟位置已终止", Snackbar.LENGTH_LONG).show();
+                Snackbar.make(v, "模拟位置已终止", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
                 mButtonStart.setImageResource(R.drawable.ic_position);
             } else {
                 double[] latLng = MapUtils.bd2wgs(mMarkLatLngMap.longitude, mMarkLatLngMap.latitude);
                 double alt = Double.parseDouble(sharedPreferences.getString("setting_altitude", "55.0"));
                 mServiceBinder.setPosition(latLng[0], latLng[1], alt);
+                Snackbar.make(v, "已传送到新位置", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
+
                 recordCurrentLocation(mMarkLatLngMap.longitude, mMarkLatLngMap.latitude);
+
                 mBaiduMap.clear();
                 mMarkLatLngMap = null;
-                GoUtils.showLocationNotice(this, v, true);
+
+                if (GoUtils.isWifiEnabled(MainActivity.this)) {
+                    GoUtils.showDisableWifiDialog(MainActivity.this);
+                }
             }
         } else {
             if (!GoUtils.isAllowMockLocation(this)) {
@@ -890,14 +855,21 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
                 XLog.e("无模拟位置权限!");
             } else {
                 if (mMarkLatLngMap == null) {
-                    Snackbar.make(v, "请先点击地图位置或者搜索位置", Snackbar.LENGTH_LONG).show();
+                    Snackbar.make(v, "请先点击地图位置或者搜索位置", Snackbar.LENGTH_LONG)
+                            .setAction("Action", null).show();
                 } else {
                     startGoLocation();
                     mButtonStart.setImageResource(R.drawable.ic_fly);
+                    Snackbar.make(v, "模拟位置已启动", Snackbar.LENGTH_LONG)
+                            .setAction("Action", null).show();
+
                     recordCurrentLocation(mMarkLatLngMap.longitude, mMarkLatLngMap.latitude);
                     mBaiduMap.clear();
                     mMarkLatLngMap = null;
-                    GoUtils.showLocationNotice(this, v, false);
+
+                    if (GoUtils.isWifiEnabled(MainActivity.this)) {
+                        GoUtils.showDisableWifiDialog(MainActivity.this);
+                    }
                 }
             }
         }
@@ -915,21 +887,6 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
         } catch (Exception e) {
             XLog.e("ERROR: sqlite init error");
         }
-        mLocationHistoryValues = new ContentValues();
-        mLocationHistoryGeoCoder = GeoCoder.newInstance();
-        mLocationHistoryGeoCoder.setOnGetGeoCodeResultListener(new OnGetGeoCoderResultListener() {
-            @Override
-            public void onGetGeoCodeResult(GeoCodeResult geoCodeResult) {
-            }
-
-            @Override
-            public void onGetReverseGeoCodeResult(ReverseGeoCodeResult reverseGeoCodeResult) {
-                if (reverseGeoCodeResult != null && reverseGeoCodeResult.error == SearchResult.ERRORNO.NO_ERROR) {
-                    mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_LOCATION, reverseGeoCodeResult.getSematicDescription());
-                    DataBaseHistoryLocation.saveHistoryLocation(mLocationHistoryDB, mLocationHistoryValues);
-                }
-            }
-        });
     }
 
     //获取查询历史
@@ -961,7 +918,6 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
 
     // 记录请求的位置信息
     private void recordCurrentLocation(double lng, double lat) {
-<<<<<<< HEAD
         //参数坐标系：bd09
         final String safeCode = BuildConfig.MAPS_SAFE_CODE;
         final String ak = sharedPreferences.getString("setting_map_key", BuildConfig.MAPS_API_KEY);
@@ -1032,18 +988,6 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
                 }
             }
         });
-=======
-        // 参数坐标系：bd09
-        double[] latLng = MapUtils.bd2wgs(lng, lat);
-        mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_LOCATION, "");
-        mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_LONGITUDE_WGS84, String.valueOf(latLng[0]));
-        mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_LATITUDE_WGS84, String.valueOf(latLng[1]));
-        mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_TIMESTAMP, System.currentTimeMillis() / 1000);
-        mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_LONGITUDE_CUSTOM, Double.toString(lng));
-        mLocationHistoryValues.put(DataBaseHistoryLocation.DB_COLUMN_LATITUDE_CUSTOM, Double.toString(lat));
-        DataBaseHistoryLocation.saveHistoryLocation(mLocationHistoryDB, mLocationHistoryValues);
-        mLocationHistoryGeoCoder.reverseGeoCode(new ReverseGeoCodeOption().location(new LatLng(lat, lng)));
->>>>>>> 8d333ad6bd9a7224621bf097e87ffcacb381639f
     }
 
     /*============================== SearchView 相关 ==============================*/
@@ -1055,7 +999,7 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
         mSearchList.setOnItemClickListener((parent, view, position, id) -> {
             String lng = ((TextView) view.findViewById(R.id.poi_longitude)).getText().toString();
             String lat = ((TextView) view.findViewById(R.id.poi_latitude)).getText().toString();
-            String markName = ((TextView) view.findViewById(R.id.poi_name)).getText().toString();
+            mMarkName = ((TextView) view.findViewById(R.id.poi_name)).getText().toString();
             mMarkLatLngMap = new LatLng(Double.parseDouble(lat), Double.parseDouble(lng));
             MapStatusUpdate mapstatusupdate = MapStatusUpdateFactory.newLatLng(mMarkLatLngMap);
             mBaiduMap.setMapStatus(mapstatusupdate);
@@ -1067,7 +1011,7 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
             // mSearchList.setVisibility(View.GONE);
             //搜索历史 插表参数
             ContentValues contentValues = new ContentValues();
-            contentValues.put(DataBaseHistorySearch.DB_COLUMN_KEY, markName);
+            contentValues.put(DataBaseHistorySearch.DB_COLUMN_KEY, mMarkName);
             contentValues.put(DataBaseHistorySearch.DB_COLUMN_DESCRIPTION, ((TextView) view.findViewById(R.id.poi_address)).getText().toString());
             contentValues.put(DataBaseHistorySearch.DB_COLUMN_IS_LOCATION, DataBaseHistorySearch.DB_SEARCH_TYPE_RESULT);
             contentValues.put(DataBaseHistorySearch.DB_COLUMN_LONGITUDE_CUSTOM, lng);
@@ -1091,6 +1035,7 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
             if (searchIsLoc.equals("1")) {
                 String lng = ((TextView) view.findViewById(R.id.search_longitude)).getText().toString();
                 String lat = ((TextView) view.findViewById(R.id.search_latitude)).getText().toString();
+                // mMarkName = ((TextView) view.findViewById(R.id.poi_name)).getText().toString();
                 mMarkLatLngMap = new LatLng(Double.parseDouble(lat), Double.parseDouble(lng));
                 MapStatusUpdate mapstatusupdate = MapStatusUpdateFactory.newLatLng(mMarkLatLngMap);
                 mBaiduMap.setMapStatus(mapstatusupdate);
@@ -1219,24 +1164,15 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
         registerReceiver(mDownloadBdRcv, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
 
-    private void checkUpdateVersion() {
+    private void checkUpdateVersion(boolean result) {
         String mapApiUrl = "https://api.github.com/repos/zcshou/gogogo/releases/latest";
 
         okhttp3.Request request = new okhttp3.Request.Builder().url(mapApiUrl).get().build();
         final Call call = mOkHttpClient.newCall(request);
         call.enqueue(new Callback() {
-            private void showFail() {
-                View v = findViewById(android.R.id.content);
-                Snackbar.make(v, "获取更新信息失败", Snackbar.LENGTH_LONG).setAction("去浏览器看看", view -> {
-                    Uri uri = Uri.parse("https://github.com/ZCShou/GoGoGo/releases");
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
-                }).show();
-            }
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 XLog.i("更新检测失败");
-                showFail();
             }
 
             @Override
@@ -1291,11 +1227,12 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
                                     });
                                 }
                             } else {
-                                GoUtils.DisplayToast(MainActivity.this, getResources().getString(R.string.update_last));
+                                if (result) {
+                                    GoUtils.DisplayToast(MainActivity.this, getResources().getString(R.string.update_last));
+                                }
                             }
                         } catch (JSONException e) {
                             XLog.e("ERROR: resolve json");
-                            showFail();
                         }
                     });
                 }
