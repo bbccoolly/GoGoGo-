@@ -90,6 +90,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.lcz.go.BuildConfig;
+import com.lcz.go.R;
 import com.zcshou.service.ServiceGo;
 import com.zcshou.database.DataBaseHistoryLocation;
 import com.zcshou.database.DataBaseHistorySearch;
@@ -126,7 +128,7 @@ public class MainActivity extends BaseActivity implements SensorEventListener {
     public static String mCurrentCity = null;
     private MapView mMapView;
     private static BaiduMap mBaiduMap = null;
-    private static LatLng mMarkLatLngMap = new LatLng(36.547743718042415, 117.07018449827267); // 当前标记的地图点
+    private static LatLng mMarkLatLngMap = new LatLng(22.582833991069517, 113.97846790931015); // 当前标记的地图点
     private static String mMarkName = null;
     private GeoCoder mGeoCoder;
     private SensorManager mSensorManager;

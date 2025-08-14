@@ -17,6 +17,8 @@ import com.elvishew.xlog.printer.file.FilePrinter;
 import com.elvishew.xlog.printer.file.backup.NeverBackupStrategy;
 import com.elvishew.xlog.printer.file.clean.FileLastModifiedCleanStrategy;
 import com.elvishew.xlog.printer.file.naming.ChangelessFileNameGenerator;
+import com.lcz.go.BuildConfig;
+import com.lcz.go.R;
 
 import java.io.File;
 

@@ -24,6 +24,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.lcz.go.R;
 import com.zcshou.utils.GoUtils;
 
 import java.util.ArrayList;

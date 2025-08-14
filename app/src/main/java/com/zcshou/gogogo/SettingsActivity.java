@@ -5,6 +5,8 @@ import android.view.MenuItem;
 
 import androidx.appcompat.app.ActionBar;
 
+import com.lcz.go.R;
+
 public class SettingsActivity extends BaseActivity {
 
     @Override
