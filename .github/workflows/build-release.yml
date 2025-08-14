@@ -104,7 +104,11 @@ jobs:
 
       # https://github.com/marketplace/actions/gh-release
       - name: Release APK
+<<<<<<< HEAD
         uses: softprops/action-gh-release@v2.3.2
+=======
+        uses: softprops/action-gh-release@v2.2.1
+>>>>>>> 8d333ad6bd9a7224621bf097e87ffcacb381639f
         if: startsWith(github.ref, 'refs/tags/')
         with:
           token: ${{ github.token }}
