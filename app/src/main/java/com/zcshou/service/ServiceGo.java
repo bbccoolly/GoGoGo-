@@ -78,12 +78,11 @@ public class ServiceGo extends Service {
         removeTestProviderGPS();
         addTestProviderGPS();
 
-        initGoLocation();
-
+        initJoyStick();      // ✅ 先初始化摇杆
+        initGoLocation();    // 再启动 handler 循环
         initNotification();
-
-        initJoyStick();
     }
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {

@@ -93,42 +93,51 @@ public class GoUtils {
     @SuppressLint("wrongconstant")
     public static boolean isAllowMockLocation(Context context) {
         boolean canMockPosition = false;
-        int index;
+        LocationManager locationManager =
+                (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 
         try {
-            LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);//获得LocationManager引用
-
-            List<String> list = locationManager.getAllProviders();
-            for (index = 0; index < list.size(); index++) {
-                if (list.get(index).equals(LocationManager.GPS_PROVIDER)) {
-                    break;
-                }
-            }
-
-            if (index < list.size()) {
-                // 注意，由于 android api 问题，下面的参数会提示错误(以下参数是通过相关API获取的真实GPS参数，不是随便写的)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, false, true, false,
-                            false, true, true, true, ProviderProperties.POWER_USAGE_HIGH, ProviderProperties.ACCURACY_FINE);
-                } else {
-                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, false, true, false,
-                            false, true, true, true, Criteria.POWER_HIGH, Criteria.ACCURACY_FINE);
-                }
-                canMockPosition = true;
-            }
-
-            // 模拟位置可用
-            if (canMockPosition) {
-                // remove test provider
-                locationManager.setTestProviderEnabled(LocationManager.GPS_PROVIDER, false);
+            // 先尝试移除已存在的 test provider，避免重复添加崩溃
+            try {
                 locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
+            } catch (Exception ignore) {
+                // 如果不存在会抛异常，忽略即可
             }
+
+            // 添加一个临时的 test provider 来判断是否允许 Mock
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                locationManager.addTestProvider(
+                        LocationManager.GPS_PROVIDER,
+                        false, true, false, false, true, true, true,
+                        ProviderProperties.POWER_USAGE_HIGH,
+                        ProviderProperties.ACCURACY_FINE
+                );
+            } else {
+                locationManager.addTestProvider(
+                        LocationManager.GPS_PROVIDER,
+                        false, true, false, false, true, true, true,
+                        Criteria.POWER_HIGH,
+                        Criteria.ACCURACY_FINE
+                );
+            }
+
+            // 如果能走到这里说明允许 Mock
+            canMockPosition = true;
         } catch (SecurityException e) {
             e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            // 已存在/不支持，说明不可用
+            e.printStackTrace();
+        } finally {
+            // 清理掉临时的 provider
+            try {
+                locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
+            } catch (Exception ignore) {}
         }
 
         return canMockPosition;
     }
+
 
     /**
      * [获取应用程序版本名称]
